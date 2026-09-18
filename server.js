@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'ed9la89p',
   api_key: process.env.CLOUDINARY_API_KEY || '865795455727769',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'p7HVXlLcLhf8-bxFpE5WEoL7VcY'
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'p7HVXILcLhf8-bxFpE5WEoL7VcY'
 });
 
 // Configuración de PostgreSQL (Neon)
