@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema Académico & Auto-Recuperación de Base de Datos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER / NAVBAR -->
+  <header class="navbar">
+    <div class="navbar-brand">
+      <div class="brand-icon">
+        <i class="bi bi-shield-check" style="font-size: 24px;"></i>
+      </div>
+      <div>
+        <h1 class="brand-title">AcademiaPro <span class="brand-badge">Auto-Restore 2.0</span></h1>
+        <p class="brand-subtitle">Gestión Académica con Resiliencia & Auto-Recuperación en SQL Server</p>
+      </div>
+    </div>
+
+    <div class="navbar-actions">
+      <!-- Live Status Pill -->
+      <div class="status-pill status-pill--online" id="global-status-pill">
+        <span class="pulse-dot"></span>
+        <span id="global-status-text">BD_Academica ONLINE</span>
+      </div>
+
+      <!-- Live Clock -->
+      <div class="clock-chip">
+        <i class="bi bi-clock"></i>
+        <span id="live-clock">--:--:--</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- HERO / BANNER DE DESASTRE Y RECUPERACIÓN -->
+    <section class="disaster-banner" id="disaster-banner">
+      <div class="disaster-content">
+        <div class="disaster-header">
+          <div class="disaster-tag">
+            <span class="radar-ping"></span>
+            PANEL DE RESILIENCIA Y DEMOSTRACIÓN
+          </div>
+          <h2>Prueba de Desastre en Vivo & Auto-Restauración</h2>
+          <p>
+            Al eliminar la base de datos <strong>[BD_Academica]</strong>, el Agente de SQL Server y el sistema detectarán la ausencia y restaurarán automáticamente todos los datos, tablas y calificaciones desde el último backup por minuto.
+          </p>
+        </div>
+
+        <div class="disaster-controls">
+          <button class="btn btn--danger" id="btn-drop-db" onclick="confirmDropDatabase()">
+            <i class="bi bi-database-x"></i>
+            Simular Caída: Eliminar Base de Datos
+          </button>
+
+          <button class="btn btn--success" id="btn-restore-now" onclick="triggerRestoreNow()">
+            <i class="bi bi-arrow-counterclockwise"></i>
+            Forzar Restauración Inmediata
+          </button>
+
+          <button class="btn btn--primary" id="btn-backup-now" onclick="triggerBackupNow()">
+            <i class="bi bi-cloud-arrow-up"></i>
+            Crear Backup Ahora
+          </button>
+
+          <button class="btn btn--ghost" id="btn-reset-data" onclick="triggerResetData()">
+            <i class="bi bi-arrow-repeat"></i>
+            Restablecer Datos Demo
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALERTA DINÁMICA DE BASE DE DATOS ELIMINADA -->
+    <div class="recovery-alert" id="recovery-alert" style="display: none;">
+      <div class="recovery-alert-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="recovery-alert-content">
+        <h3>¡ALERTA: BD_Academica ha sido eliminada!</h3>
+        <p>El Job <code>AutoRestaurarBD_Academica</code> en SQL Server Agent está en ciclo de monitoreo por minuto. La base de datos será recuperada automáticamente con todos sus registros intactos.</p>
+      </div>
+      <div class="recovery-alert-spinner">
+        <div class="spinner"></div>
+        <span>Auto-restaurando...</span>
+      </div>
+    </div>
+
+    <!-- TARJETAS DE MÉTRICAS -->
+    <section class="metrics-grid">
+      <!-- Tarjeta 1: Estado BD -->
+      <div class="metric-card" id="metric-db-card">
+        <div class="metric-icon metric-icon--cyan">
+          <i class="bi bi-database" style="font-size: 20px;"></i>
+        </div>
+        <div class="metric-info">
+          <span class="metric-title">Base de Datos</span>
+          <div class="metric-value" id="card-db-name">BD_Academica</div>
+          <span class="metric-sub" id="card-db-status">Estado: ONLINE · SIMPLE</span>
+        </div>
+        <div class="metric-badge metric-badge--success" id="card-db-badge">ONLINE</div>
+      </div>
+
+      <!-- Tarjeta 2: Alumnos -->
+      <div class="metric-card">
+        <div class="metric-icon metric-icon--indigo">
+          <i class="bi bi-people" style="font-size: 20px;"></i>
+        </div>
+        <div class="metric-info">
+          <span class="metric-title">Alumnos Matriculados</span>
+          <div class="metric-value" id="count-alumnos">0</div>
+          <span class="metric-sub" id="sub-alumnos">Ingeniería & Ciencias</span>
+        </div>
+        <div class="metric-badge metric-badge--neutral">Estudiantes</div>
+      </div>
+
+      <!-- Tarjeta 3: Cursos & Docentes -->
+      <div class="metric-card">
+        <div class="metric-icon metric-icon--emerald">
+          <i class="bi bi-book" style="font-size: 20px;"></i>
+        </div>
+        <div class="metric-info">
+          <span class="metric-title">Cursos / Docentes</span>
+          <div class="metric-value" id="count-cursos">0 / 0</div>
+          <span class="metric-sub" id="sub-cursos">Periodo Activo 2026-I</span>
+        </div>
+        <div class="metric-badge metric-badge--neutral">Academia</div>
+      </div>
+
+      <!-- Tarjeta 4: Respaldo .BAK -->
+      <div class="metric-card">
+        <div class="metric-icon metric-icon--amber">
+          <i class="bi bi-hdd" style="font-size: 20px;"></i>
+        </div>
+
+        <div class="metric-info">
+          <span class="metric-title">Copia de Seguridad (.BAK)</span>
+          <div class="metric-value" id="card-backup-size">0.00 MB</div>
+          <span class="metric-sub" id="card-backup-file">BD_Academica_backup.bak</span>
+        </div>
+        <div class="metric-badge metric-badge--amber" id="card-backup-status">1 Minuto</div>
+      </div>
+    </section>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS (TABS) -->
+    <section class="tabs-container">
+      <div class="tabs-header">
+        <button class="tab-btn tab-btn--active" onclick="switchTab('alumnos')">
+          <i class="bi bi-people"></i>
+          Estudiantes (<span id="tab-count-alumnos">0</span>)
+        </button>
+
+        <button class="tab-btn" onclick="switchTab('cursos')">
+          <i class="bi bi-book"></i>
+          Cursos y Docentes
+        </button>
+
+        <button class="tab-btn" onclick="switchTab('matriculas')">
+          <i class="bi bi-journal-check"></i>
+          Matrículas y Calificaciones
+        </button>
+
+        <button class="tab-btn" onclick="switchTab('jobs')">
+          <i class="bi bi-server"></i>
+          Monitor de Jobs & Backups
+        </button>
+      </div>
+
+      <!-- CONTENIDO PESTAÑA 1: ALUMNOS -->
+      <div class="tab-content tab-content--active" id="tab-alumnos">
+        <div class="panel-toolbar">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="search-alumno" placeholder="Buscar por nombre, código o DNI..." oninput="filterAlumnos()" />
+          </div>
+
+          <button class="btn btn--primary" onclick="openModalNuevoAlumno()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nuevo Alumno
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre Completo</th>
+                <th>DNI</th>
+                <th>Email Institucional</th>
+                <th>Carrera</th>
+                <th>Ciclo</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-alumnos">
+              <tr><td colspan="8" class="empty-state">Cargando lista de alumnos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CONTENIDO PESTAÑA 2: CURSOS Y DOCENTES -->
+      <div class="tab-content" id="tab-cursos">
+        <div class="table-responsive">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre del Curso</th>
+                <th>Créditos</th>
+                <th>Horas / Sem</th>
+                <th>Docente Asignado</th>
+                <th>Especialidad</th>
+                <th>Email del Docente</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-cursos">
+              <tr><td colspan="7" class="empty-state">Cargando cursos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CONTENIDO PESTAÑA 3: MATRÍCULAS Y CALIFICACIONES -->
+      <div class="tab-content" id="tab-matriculas">
+        <div class="table-responsive">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Curso</th>
+                <th>Periodo</th>
+                <th>Nota 1 (30%)</th>
+                <th>Nota 2 (30%)</th>
+                <th>Examen Final (40%)</th>
+                <th>Promedio Final</th>
+                <th>Condición</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-matriculas">
+              <tr><td colspan="8" class="empty-state">Cargando calificaciones...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CONTENIDO PESTAÑA 4: MONITOR DE JOBS & HISTORIAL -->
+      <div class="tab-content" id="tab-jobs">
+        <div class="jobs-layout">
+          <!-- Jobs Cards -->
+          <div class="jobs-cards-col">
+            <div class="job-status-card" id="job-card-backup">
+              <div class="job-card-header">
+                <div>
+                  <h4>Job: BackupDiario</h4>
+                  <p>Sobreescribe BD_Academica_backup.bak cada 1 min</p>
+                </div>
+                <span class="badge badge--success" id="job-backup-badge">Habilitado</span>
+              </div>
+              <div class="job-card-footer">
+                <span id="job-backup-info">Última ejecución: --</span>
+              </div>
+            </div>
+
+            <div class="job-status-card" id="job-card-restore">
+              <div class="job-card-header">
+                <div>
+                  <h4>Job: AutoRestaurarBD_Academica</h4>
+                  <p>Detecta base de datos eliminada y la restaura automáticamente</p>
+                </div>
+                <span class="badge badge--success" id="job-restore-badge">Habilitado</span>
+              </div>
+              <div class="job-card-footer">
+                <span id="job-restore-info">Última ejecución: --</span>
+              </div>
+            </div>
+
+            <!-- Panel de Backups en Cloudinary -->
+            <div class="job-status-card" id="cloud-backups-card">
+              <div class="panel-header-simple">
+                <h3><i class="bi bi-cloud-check"></i> Backups en la Nube (Cloudinary)</h3>
+                <button class="btn btn--sm btn--primary" onclick="loadCloudBackups()">Refrescar</button>
+              </div>
+              <div class="history-list" id="cloud-backups-container">
+                <div class="empty-state">Cargando backups en la nube...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Historial de ejecuciones -->
+          <div class="history-col">
+            <div class="panel-header-simple">
+              <h3>Historial de Ejecuciones (SQL Server Agent)</h3>
+              <button class="btn btn--sm btn--ghost" onclick="loadHistory()">Actualizar</button>
+            </div>
+            <div class="history-list" id="history-container">
+              <div class="empty-state">Cargando historial de jobs...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONSOLA EN VIVO / TERMINAL DE EVENTOS -->
+    <section class="terminal-panel">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <span class="dot dot--red"></span>
+          <span class="dot dot--yellow"></span>
+          <span class="dot dot--green"></span>
+          <span class="terminal-title">Consola de Eventos & Monitoreo en Tiempo Real</span>
+        </div>
+        <button class="btn-clear" onclick="clearLogs()">Limpiar Consola</button>
+      </div>
+      <div class="terminal-body" id="terminal-logs">
+        <div class="log-entry log-entry--info">[Sistema] Inicializando consola de monitoreo...</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: NUEVO ALUMNO -->
+  <div class="modal-overlay" id="modal-nuevo-alumno">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Registrar Nuevo Estudiante</h3>
+        <button class="modal-close" onclick="closeModalNuevoAlumno()">&times;</button>
+      </div>
+      <form id="form-nuevo-alumno" onsubmit="handleGuardarAlumno(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombres *</label>
+              <input type="text" id="input-nombre" required placeholder="Ej. Carlos Eduardo" />
+            </div>
+            <div class="form-group">
+              <label>Apellidos *</label>
+              <input type="text" id="input-apellido" required placeholder="Ej. Ramirez Silva" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>DNI *</label>
+              <input type="text" id="input-dni" required maxlength="8" placeholder="8 dígitos" />
+            </div>
+            <div class="form-group">
+              <label>Ciclo Académico</label>
+              <select id="select-ciclo">
+                <option value="I">Ciclo I</option>
+                <option value="II">Ciclo II</option>
+                <option value="III">Ciclo III</option>
+                <option value="IV">Ciclo IV</option>
+                <option value="V">Ciclo V</option>
+                <option value="VI" selected>Ciclo VI</option>
+                <option value="VII">Ciclo VII</option>
+                <option value="VIII">Ciclo VIII</option>
+                <option value="IX">Ciclo IX</option>
+                <option value="X">Ciclo X</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Carrera Profesional *</label>
+            <select id="select-carrera" required>
+              <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+              <option value="Ingeniería de Software">Ingeniería de Software</option>
+              <option value="Ciencia de Datos">Ciencia de Datos</option>
+              <option value="Ciberseguridad">Ciberseguridad</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Email Institucional (Opcional)</label>
+            <input type="email" id="input-email" placeholder="Se genera automáticamente si se deja en blanco" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn--ghost" onclick="closeModalNuevoAlumno()">Cancelar</button>
+          <button type="submit" class="btn btn--primary" id="btn-submit-alumno">Guardar Alumno</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
