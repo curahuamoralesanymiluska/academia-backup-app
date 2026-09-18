@@ -543,7 +543,7 @@ async function restoreFromCloud(url) {
 
 // Iniciar aplicación
 addLog(' Sistema Académico con Auto-Restauración iniciado.', 'success');
-addLog(' Conexión establecida con Microsoft SQL Server (SQLEXPRESS).', 'info');
+addLog(' Conexión establecida con Neon PostgreSQL (Nube).', 'info');
 loadAllData();
 
 // Polling continuo cada 4 segundos para detectar caída y auto-restauración en tiempo real

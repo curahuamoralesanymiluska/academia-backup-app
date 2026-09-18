@@ -386,6 +386,60 @@ app.get('/api/history', (req, res) => {
   res.json({ historial: [] });
 });
 
+// ─────────────────────────────────────────────────────────────
+// 5. AUTO-RESTAURADOR DAEMON
+// ─────────────────────────────────────────────────────────────
+setInterval(async () => {
+  try {
+    const res = await runQuery(`SELECT count(*) as total FROM information_schema.tables WHERE table_schema='public' AND table_name='alumnos'`);
+    if (parseInt(res[0].total) === 0) {
+      console.log('Detectada caída de BD. Iniciando auto-restauración desde Cloudinary...');
+      // Buscar ultimo backup
+      const result = await cloudinary.search.expression('folder:backups_pg').sort_by('created_at', 'desc').max_results(1).execute();
+      if (result.resources && result.resources.length > 0) {
+        const url = result.resources[0].secure_url;
+        const tempFile = path.join(BACKUP_DIR, 'temp_autorestore.json');
+        const file = fs.createWriteStream(tempFile);
+        https.get(url, (response) => {
+          response.pipe(file);
+          file.on('finish', async () => {
+            file.close();
+            const data = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
+            await initDB();
+            if (data.alumnos) {
+              for (let a of data.alumnos) {
+                await runQuery(`INSERT INTO Alumnos (id_alumno, codigo, nombre, apellido, dni, email, carrera, ciclo, estado, fecha_registro) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, [a.id_alumno, a.codigo, a.nombre, a.apellido, a.dni, a.email, a.carrera, a.ciclo, a.estado, a.fecha_registro]);
+              }
+            }
+            if (data.docentes) {
+              for (let d of data.docentes) {
+                await runQuery(`INSERT INTO Docentes (id_docente, nombre, apellido, especialidad, email) VALUES ($1, $2, $3, $4, $5)`, [d.id_docente, d.nombre, d.apellido, d.especialidad, d.email]);
+              }
+            }
+            if (data.cursos) {
+              for (let c of data.cursos) {
+                await runQuery(`INSERT INTO Cursos (id_curso, codigo, nombre, creditos, horas_semanales, id_docente) VALUES ($1, $2, $3, $4, $5, $6)`, [c.id_curso, c.codigo, c.nombre, c.creditos, c.horas_semanales, c.id_docente]);
+              }
+            }
+            if (data.matriculas) {
+              for (let m of data.matriculas) {
+                await runQuery(`INSERT INTO Matriculas (id_matricula, id_alumno, id_curso, periodo, nota1, nota2, examen_final, promedio, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [m.id_matricula, m.id_alumno, m.id_curso, m.periodo, m.nota1, m.nota2, m.examen_final, m.promedio, m.estado]);
+              }
+            }
+            await runQuery(`SELECT setval('alumnos_id_alumno_seq', COALESCE((SELECT MAX(id_alumno) FROM Alumnos), 1))`);
+            await runQuery(`SELECT setval('docentes_id_docente_seq', COALESCE((SELECT MAX(id_docente) FROM Docentes), 1))`);
+            await runQuery(`SELECT setval('cursos_id_curso_seq', COALESCE((SELECT MAX(id_curso) FROM Cursos), 1))`);
+            await runQuery(`SELECT setval('matriculas_id_matricula_seq', COALESCE((SELECT MAX(id_matricula) FROM Matriculas), 1))`);
+            console.log('Auto-restauración completada con éxito.');
+          });
+        });
+      }
+    }
+  } catch (e) {
+    // Ignorar si aún no hay conexión
+  }
+}, 10000);
+
 // Inicializar e Iniciar servidor
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
